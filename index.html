@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Medieval Combat</title>
+<style>
+    body { margin:0; overflow:hidden; background:#000; font-family:Arial }
+    #ui {
+        position:fixed;
+        top:10px;
+        left:10px;
+        color:white;
+        font-size:18px;
+        z-index:10;
+    }
+    #crosshair {
+        position:fixed;
+        top:50%;
+        left:50%;
+        width:6px;
+        height:6px;
+        background:white;
+        transform:translate(-50%,-50%);
+        border-radius:50%;
+        opacity:0.7;
+    }
+</style>
+</head>
+<body>
+<div id="ui">HP: <span id="hp">100</span></div>
+<div id="crosshair"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"></script>
+
+<script>
+/* ===== SCENE ===== */
+const scene = new THREE.Scene()
+scene.fog = new THREE.Fog(0x111111, 15, 80)
+
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 500)
+camera.position.set(0,4,8)
+
+const renderer = new THREE.WebGLRenderer({antialias:true})
+renderer.setSize(innerWidth, innerHeight)
+renderer.shadowMap.enabled = true
+document.body.appendChild(renderer.domElement)
+
+/* ===== LIGHTING ===== */
+const sun = new THREE.DirectionalLight(0xffe6c9, 1.2)
+sun.position.set(10,20,10)
+sun.castShadow = true
+scene.add(sun)
+
+scene.add(new THREE.AmbientLight(0x404040))
+
+/* ===== GROUND ===== */
+const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(200,200),
+    new THREE.MeshStandardMaterial({color:0x3a3a3a})
+)
+ground.rotation.x = -Math.PI/2
+ground.receiveShadow = true
+scene.add(ground)
+
+/* ===== PLAYER ===== */
+const player = new THREE.Group()
+
+const body = new THREE.Mesh(
+    new THREE.BoxGeometry(1,2,1),
+    new THREE.MeshStandardMaterial({color:0x5555ff})
+)
+body.castShadow = true
+player.add(body)
+
+const sword = new THREE.Mesh(
+    new THREE.BoxGeometry(0.15,1.8,0.15),
+    new THREE.MeshStandardMaterial({color:0xcccccc})
+)
+sword.position.set(0.7,0.2,0)
+player.add(sword)
+
+player.position.y = 1
+scene.add(player)
+
+/* ===== ENEMY ===== */
+function createEnemy(x,z){
+    const e = new THREE.Mesh(
+        new THREE.BoxGeometry(1,2,1),
+        new THREE.MeshStandardMaterial({color:0xaa3333})
+    )
+    e.position.set(x,1,z)
+    e.castShadow = true
+    e.hp = 50
+    scene.add(e)
+    return e
+}
+
+const enemies = [
+    createEnemy(5,5),
+    createEnemy(-6,-4),
+    createEnemy(3,-8)
+]
+
+/* ===== CONTROLS ===== */
+const keys = {}
+document.addEventListener("keydown", e=>keys[e.key.toLowerCase()] = true)
+document.addEventListener("keyup", e=>keys[e.key.toLowerCase()] = false)
+
+let attacking = false
+document.addEventListener("mousedown", ()=>{
+    if(attacking) return
+    attacking = true
+    sword.rotation.z = -1.5
+    setTimeout(()=>{
+        sword.rotation.z = 0
+        attacking = false
+    },200)
+})
+
+/* ===== STATS ===== */
+let hp = 100
+const hpUI = document.getElementById("hp")
+
+/* ===== GAME LOOP ===== */
+function animate(){
+    requestAnimationFrame(animate)
+
+    /* Movement */
+    const speed = 0.12
+    if(keys["w"]) player.translateZ(-speed)
+    if(keys["s"]) player.translateZ(speed)
+    if(keys["a"]) player.rotation.y += 0.05
+    if(keys["d"]) player.rotation.y -= 0.05
+
+    /* Camera follow */
+    camera.position.lerp(
+        player.position.clone().add(
+            new THREE.Vector3(
+                Math.sin(player.rotation.y)*6,
+                4,
+                Math.cos(player.rotation.y)*6
+            )
+        ),
+        0.1
+    )
+    camera.lookAt(player.position)
+
+    /* Enemy AI */
+    enemies.forEach(e=>{
+        if(e.hp<=0) return
+        e.lookAt(player.position)
+        e.translateZ(0.03)
+
+        if(e.position.distanceTo(player.position)<1.5){
+            hp -= 0.2
+            hpUI.textContent = Math.max(0, Math.floor(hp))
+        }
+
+        if(attacking && e.position.distanceTo(player.position)<2){
+            e.hp -= 10
+            e.scale.y = Math.max(0.1, e.hp/50)
+        }
+    })
+
+    renderer.render(scene,camera)
+}
+animate()
+
+/* ===== RESIZE ===== */
+addEventListener("resize",()=>{
+    camera.aspect = innerWidth/innerHeight
+    camera.updateProjectionMatrix()
+    renderer.setSize(innerWidth,innerHeight)
+})
+</script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Medieval Combat</title>
+<style>
+    body { margin:0; overflow:hidden; background:#000; font-family:Arial }
+    #ui {
+        position:fixed;
+        top:10px;
+        left:10px;
+        color:white;
+        font-size:18px;
+        z-index:10;
+    }
+    #crosshair {
+        position:fixed;
+        top:50%;
+        left:50%;
+        width:6px;
+        height:6px;
+        background:white;
+        transform:translate(-50%,-50%);
+        border-radius:50%;
+        opacity:0.7;
+    }
+</style>
+</head>
+<body>
+<div id="ui">HP: <span id="hp">100</span></div>
+<div id="crosshair"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"></script>
+
+<script>
+/* ===== SCENE ===== */
+const scene = new THREE.Scene()
+scene.fog = new THREE.Fog(0x111111, 15, 80)
+
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 500)
+camera.position.set(0,4,8)
+
+const renderer = new THREE.WebGLRenderer({antialias:true})
+renderer.setSize(innerWidth, innerHeight)
+renderer.shadowMap.enabled = true
+document.body.appendChild(renderer.domElement)
+
+/* ===== LIGHTING ===== */
+const sun = new THREE.DirectionalLight(0xffe6c9, 1.2)
+sun.position.set(10,20,10)
+sun.castShadow = true
+scene.add(sun)
+
+scene.add(new THREE.AmbientLight(0x404040))
+
+/* ===== GROUND ===== */
+const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(200,200),
+    new THREE.MeshStandardMaterial({color:0x3a3a3a})
+)
+ground.rotation.x = -Math.PI/2
+ground.receiveShadow = true
+scene.add(ground)
+
+/* ===== PLAYER ===== */
+const player = new THREE.Group()
+
+const body = new THREE.Mesh(
+    new THREE.BoxGeometry(1,2,1),
+    new THREE.MeshStandardMaterial({color:0x5555ff})
+)
+body.castShadow = true
+player.add(body)
+
+const sword = new THREE.Mesh(
+    new THREE.BoxGeometry(0.15,1.8,0.15),
+    new THREE.MeshStandardMaterial({color:0xcccccc})
+)
+sword.position.set(0.7,0.2,0)
+player.add(sword)
+
+player.position.y = 1
+scene.add(player)
+
+/* ===== ENEMY ===== */
+function createEnemy(x,z){
+    const e = new THREE.Mesh(
+        new THREE.BoxGeometry(1,2,1),
+        new THREE.MeshStandardMaterial({color:0xaa3333})
+    )
+    e.position.set(x,1,z)
+    e.castShadow = true
+    e.hp = 50
+    scene.add(e)
+    return e
+}
+
+const enemies = [
+    createEnemy(5,5),
+    createEnemy(-6,-4),
+    createEnemy(3,-8)
+]
+
+/* ===== CONTROLS ===== */
+const keys = {}
+document.addEventListener("keydown", e=>keys[e.key.toLowerCase()] = true)
+document.addEventListener("keyup", e=>keys[e.key.toLowerCase()] = false)
+
+let attacking = false
+document.addEventListener("mousedown", ()=>{
+    if(attacking) return
+    attacking = true
+    sword.rotation.z = -1.5
+    setTimeout(()=>{
+        sword.rotation.z = 0
+        attacking = false
+    },200)
+})
+
+/* ===== STATS ===== */
+let hp = 100
+const hpUI = document.getElementById("hp")
+
+/* ===== GAME LOOP ===== */
+function animate(){
+    requestAnimationFrame(animate)
+
+    /* Movement */
+    const speed = 0.12
+    if(keys["w"]) player.translateZ(-speed)
+    if(keys["s"]) player.translateZ(speed)
+    if(keys["a"]) player.rotation.y += 0.05
+    if(keys["d"]) player.rotation.y -= 0.05
+
+    /* Camera follow */
+    camera.position.lerp(
+        player.position.clone().add(
+            new THREE.Vector3(
+                Math.sin(player.rotation.y)*6,
+                4,
+                Math.cos(player.rotation.y)*6
+            )
+        ),
+        0.1
+    )
+    camera.lookAt(player.position)
+
+    /* Enemy AI */
+    enemies.forEach(e=>{
+        if(e.hp<=0) return
+        e.lookAt(player.position)
+        e.translateZ(0.03)
+
+        if(e.position.distanceTo(player.position)<1.5){
+            hp -= 0.2
+            hpUI.textContent = Math.max(0, Math.floor(hp))
+        }
+
+        if(attacking && e.position.distanceTo(player.position)<2){
+            e.hp -= 10
+            e.scale.y = Math.max(0.1, e.hp/50)
+        }
+    })
+
+    renderer.render(scene,camera)
+}
+animate()
+
+/* ===== RESIZE ===== */
+addEventListener("resize",()=>{
+    camera.aspect = innerWidth/innerHeight
+    camera.updateProjectionMatrix()
+    renderer.setSize(innerWidth,innerHeight)
+})
+</script>
+</body>
+</html>
