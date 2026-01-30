@@ -13,89 +13,59 @@ body { margin:0; overflow:hidden; background:#000; font-family:Arial }
     font-size:18px;
     z-index:10;
 }
-#crosshair {
-    position:fixed;
-    top:50%;
-    left:50%;
-    width:6px;
-    height:6px;
-    background:white;
-    transform:translate(-50%,-50%);
-    border-radius:50%;
-    opacity:0.6;
-}
 </style>
 </head>
 <body>
 
 <div id="ui">HP: <span id="hp">100</span></div>
-<div id="crosshair"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"></script>
 
 <script>
-/* ================= SCENE ================= */
+/* ===== BASIC SCENE ===== */
 const scene = new THREE.Scene()
-scene.fog = new THREE.Fog(0x141414, 15, 80)
+scene.background = new THREE.Color(0x202533)
 
-/* ================= CAMERA ================= */
+/* ===== CAMERA ===== */
 const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 500)
-camera.position.set(0,4,8)
+camera.position.set(0,5,10)
 
-/* ================= RENDERER ================= */
+/* ===== RENDERER ===== */
 const renderer = new THREE.WebGLRenderer({ antialias:true })
 renderer.setSize(innerWidth, innerHeight)
-renderer.setPixelRatio(Math.min(devicePixelRatio,2))
 renderer.shadowMap.enabled = true
-renderer.shadowMap.type = THREE.PCFSoftShadowMap
 document.body.appendChild(renderer.domElement)
 
-/* ================= LIGHTING ================= */
-const sun = new THREE.DirectionalLight(0xfff1d6, 1.3)
-sun.position.set(20,40,20)
-sun.castShadow = true
-sun.shadow.mapSize.set(2048,2048)
-scene.add(sun)
+/* ===== LIGHT ===== */
+const light = new THREE.DirectionalLight(0xffffff, 1)
+light.position.set(10,20,10)
+light.castShadow = true
+scene.add(light)
+scene.add(new THREE.AmbientLight(0x555555))
 
-scene.add(new THREE.AmbientLight(0x303030, 0.7))
-
-/* ================= TERRAIN MAP ================= */
-const terrainGeo = new THREE.PlaneGeometry(200,200,128,128)
-terrainGeo.rotateX(-Math.PI/2)
-const pos = terrainGeo.attributes.position
-for(let i=0;i<pos.count;i++){
-    const y = Math.sin(pos.getX(i)*0.05)*1.5 + Math.cos(pos.getZ(i)*0.05)*1.5
-    pos.setY(i,y)
-}
-terrainGeo.computeVertexNormals()
-
-const terrain = new THREE.Mesh(
-    terrainGeo,
-    new THREE.MeshStandardMaterial({ color:0x3b3a34, roughness:0.95 })
+/* ===== GROUND ===== */
+const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(200,200),
+    new THREE.MeshStandardMaterial({ color:0x3a3a3a })
 )
-terrain.receiveShadow = true
-scene.add(terrain)
+ground.rotation.x = -Math.PI/2
+ground.receiveShadow = true
+scene.add(ground)
 
-/* ================= RUINS / MAP OBJECTS ================= */
-function stoneBlock(x,z){
-    const b = new THREE.Mesh(
-        new THREE.BoxGeometry(3,2,3),
-        new THREE.MeshStandardMaterial({ color:0x6b6b6b, roughness:0.9 })
-    )
-    b.position.set(x,1,z)
-    b.castShadow = true
-    b.receiveShadow = true
-    scene.add(b)
-}
-for(let i=0;i<25;i++){
-    stoneBlock(
-        (Math.random()-0.5)*120,
-        (Math.random()-0.5)*120
-    )
-}
+/* ===== DEBUG CUBE (PROVES IT WORKS) ===== */
+const debugCube = new THREE.Mesh(
+    new THREE.BoxGeometry(2,2,2),
+    new THREE.MeshStandardMaterial({ color:0xff0000 })
+)
+debugCube.position.y = 1
+debugCube.castShadow = true
+scene.add(debugCube)
 
-/* ================= PLAYER ================= */
+/* ===== PLAYER ===== */
 const player = new THREE.Group()
+player.position.y = 1
+scene.add(player)
+
 const body = new THREE.Mesh(
     new THREE.BoxGeometry(1,2,1),
     new THREE.MeshStandardMaterial({ color:0x4b61ff })
@@ -105,18 +75,14 @@ player.add(body)
 
 const sword = new THREE.Mesh(
     new THREE.BoxGeometry(0.15,1.6,0.15),
-    new THREE.MeshStandardMaterial({ color:0xcccccc, metalness:0.9, roughness:0.2 })
+    new THREE.MeshStandardMaterial({ color:0xcccccc })
 )
 sword.position.set(0.8,0.3,0)
 player.add(sword)
 
-player.position.y = 2
-scene.add(player)
-
-/* ================= SKELETON ENEMY ================= */
+/* ===== SKELETON ===== */
 function createSkeleton(x,z){
     const s = new THREE.Group()
-
     const mat = new THREE.MeshStandardMaterial({ color:0xe5e5e5 })
 
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8,1.2,0.4), mat)
@@ -127,31 +93,18 @@ function createSkeleton(x,z){
     head.position.y = 2
     s.add(head)
 
-    const legGeo = new THREE.BoxGeometry(0.25,1,0.25)
-    const l1 = new THREE.Mesh(legGeo, mat)
-    const l2 = new THREE.Mesh(legGeo, mat)
-    l1.position.set(-0.2,0.5,0)
-    l2.position.set(0.2,0.5,0)
-    s.add(l1,l2)
-
-    s.position.set(x,2,z)
-    s.castShadow = true
-    s.hp = 40
-    s.walk = Math.random()*Math.PI
-
+    s.position.set(x,1,z)
+    s.hp = 30
     scene.add(s)
     return s
 }
 
-const skeletons = []
-for(let i=0;i<6;i++){
-    skeletons.push(createSkeleton(
-        (Math.random()-0.5)*60,
-        (Math.random()-0.5)*60
-    ))
-}
+const skeletons = [
+    createSkeleton(5,5),
+    createSkeleton(-6,-4)
+]
 
-/* ================= CONTROLS ================= */
+/* ===== CONTROLS ===== */
 const keys = {}
 addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true)
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false)
@@ -160,63 +113,46 @@ let swinging = false
 addEventListener("mousedown",()=>{
     if(swinging) return
     swinging = true
-    sword.rotation.z = -1.4
+    sword.rotation.z = -1.2
     setTimeout(()=>{
         sword.rotation.z = 0
         swinging = false
     },200)
 })
 
-/* ================= STATS ================= */
+/* ===== STATS ===== */
 let hp = 100
 const hpUI = document.getElementById("hp")
 
-/* ================= GAME LOOP ================= */
+/* ===== LOOP ===== */
 function animate(){
     requestAnimationFrame(animate)
 
-    /* Player movement */
     const speed = 0.12
     if(keys["w"]) player.translateZ(-speed)
     if(keys["s"]) player.translateZ(speed)
     if(keys["a"]) player.rotation.y += 0.05
     if(keys["d"]) player.rotation.y -= 0.05
 
-    /* Camera */
     camera.position.lerp(
-        player.position.clone().add(
-            new THREE.Vector3(
-                Math.sin(player.rotation.y)*6,
-                4,
-                Math.cos(player.rotation.y)*6
-            )
-        ),
+        player.position.clone().add(new THREE.Vector3(0,5,10)),
         0.1
     )
     camera.lookAt(player.position)
 
-    /* Skeleton AI */
     skeletons.forEach(s=>{
         if(s.hp<=0) return
-
         s.lookAt(player.position)
-        s.translateZ(0.04)
+        s.translateZ(0.03)
 
-        s.walk += 0.1
-        s.children.forEach(c=>{
-            if(c.geometry?.parameters?.height)
-                c.rotation.x = Math.sin(s.walk)*0.4
-        })
-
-        const dist = s.position.distanceTo(player.position)
-        if(dist < 1.5){
-            hp -= 0.3
-            hpUI.textContent = Math.max(0, Math.floor(hp))
+        if(s.position.distanceTo(player.position)<1.5){
+            hp -= 0.2
+            hpUI.textContent = Math.max(0,Math.floor(hp))
         }
 
-        if(swinging && dist < 2){
+        if(swinging && s.position.distanceTo(player.position)<2){
             s.hp -= 10
-            s.scale.y = s.hp/40
+            s.scale.y = s.hp/30
             if(s.hp<=0) scene.remove(s)
         }
     })
@@ -225,7 +161,6 @@ function animate(){
 }
 animate()
 
-/* ================= RESIZE ================= */
 addEventListener("resize",()=>{
     camera.aspect = innerWidth/innerHeight
     camera.updateProjectionMatrix()
